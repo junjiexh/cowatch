@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: Cowatch API
+  description: 视频流共享平台 API 规范
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发环境
+
+tags:
+  - name: rooms
+    description: 房间管理
+  - name: users
+    description: 用户管理
+  - name: videos
+    description: 视频源管理
+
+paths:
+  /rooms:
+    get:
+      summary: 获取房间列表
+      tags: [rooms]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+
+    post:
+      summary: 创建房间
+      tags: [rooms]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+
+  /rooms/{roomId}:
+    get:
+      summary: 获取房间详情
+      tags: [rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '404':
+          description: 房间不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /rooms/{roomId}/join:
+    post:
+      summary: 加入房间
+      tags: [rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: 房间密码（如果需要）
+      responses:
+        '200':
+          description: 加入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+
+  /videos/parse:
+    post:
+      summary: 解析视频源
+      tags: [videos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParseVideoRequest'
+      responses:
+        '200':
+          description: 解析成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoSource'
+
+components:
+  schemas:
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "room-123"
+        name:
+          type: string
+          example: "我的观影房间"
+        ownerId:
+          type: string
+          example: "user-456"
+        ownerName:
+          type: string
+          example: "张三"
+        isActive:
+          type: boolean
+          example: true
+        userCount:
+          type: integer
+          example: 5
+        maxUsers:
+          type: integer
+          example: 20
+        createdAt:
+          type: string
+          format: date-time
+        currentVideo:
+          $ref: '#/components/schemas/VideoSource'
+      required:
+        - id
+        - name
+        - ownerId
+        - isActive
+
+    CreateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "周末观影房"
+        password:
+          type: string
+          description: 可选的房间密码
+        maxUsers:
+          type: integer
+          minimum: 2
+          maximum: 50
+          default: 20
+      required:
+        - name
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+      required:
+        - id
+        - username
+
+    VideoSource:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [bilibili, quark, youtube]
+          example: "bilibili"
+        url:
+          type: string
+          format: uri
+          example: "https://www.bilibili.com/video/BV1xx411c7mD"
+        title:
+          type: string
+          example: "电影标题"
+        duration:
+          type: integer
+          description: 时长（秒）
+        thumbnail:
+          type: string
+          format: uri
+        streamUrl:
+          type: string
+          format: uri
+          description: 实际播放的视频流地址
+      required:
+        - id
+        - type
+        - url
+
+    ParseVideoRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "https://www.bilibili.com/video/BV1xx411c7mD"
+        type:
+          type: string
+          enum: [bilibili, quark, youtube]
+          description: 视频源类型，如果不提供会自动识别
+      required:
+        - url
+
+    VideoState:
+      type: object
+      description: 视频播放状态（通过 WebSocket 同步）
+      properties:
+        currentTime:
+          type: number
+          format: double
+          example: 123.45
+        isPlaying:
+          type: boolean
+        playbackRate:
+          type: number
+          format: double
+          default: 1.0
+        volume:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "ROOM_NOT_FOUND"
+        message:
+          type: string
+          example: "房间不存在"
+      required:
+        - code
+        - message
