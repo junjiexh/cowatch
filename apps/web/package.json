@@ -1,0 +1,12 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Please configure your dev server'",
+    "build": "echo 'Please configure your build command'",
+    "start": "echo 'Please configure your start command'",
+    "lint": "echo 'Please configure your linter'",
+    "generate:api": "openapi-typescript ../../api-specs/openapi.yaml -o src/types/api.d.ts"
+  }
+}
