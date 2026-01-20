@@ -6,7 +6,11 @@ generate-api:
 
 # Prism Mock Server
 mock:
-	cd apps/web && pnpm exec prism mock ../../api-specs/openapi.yaml -p 8080
+	cd apps/web && pnpm run mock
 
-mock-dynamic:
-	cd apps/web && pnpm exec prism mock ../../api-specs/openapi.yaml -p 8080 --dynamic
+# Frontend Development Server
+dev-web:
+	cd apps/web && pnpm run dev
+
+dev-mock-web:
+	cd apps/web && pnpm run dev-mock

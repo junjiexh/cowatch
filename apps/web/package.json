@@ -7,10 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate": "openapi-ts"
+    "generate": "openapi-ts",
+    "mock": "prism mock ../../api-specs/openapi.yaml -p 4040 --dynamic",
+    "dev-mock": "BACKEND_URL=http://localhost:4040 next dev"
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.13.1",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",
