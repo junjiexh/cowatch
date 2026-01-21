@@ -4,6 +4,7 @@ export default defineConfig({
   input: '../../api-specs/openapi.yaml',
   output: {
     path: './src/client',
+    clean: true,
   },
   plugins: [
     '@hey-api/client-fetch',
@@ -13,4 +14,7 @@ export default defineConfig({
       enums: 'javascript',
     },
   ],
+  client: {
+    baseUrl: '/api/v1',
+  },
 });
