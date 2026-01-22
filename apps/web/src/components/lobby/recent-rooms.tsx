@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Play, ChevronRight, Loader2 } from "lucide-react";
 import { getUsersMeRecentRooms } from "@/client";
 import type { RecentRoom as RecentRoomType } from "@/client/types.gen";
+import { useAuth } from "@/stores/auth-store";
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -22,11 +23,17 @@ function formatRelativeTime(dateString: string): string {
 
 export function RecentRooms() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [recentRooms, setRecentRooms] = useState<RecentRoomType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   useEffect(() => {
+    // Only fetch if user is authenticated
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchRecentRooms = async () => {
       try {
         const response = await getUsersMeRecentRooms({
@@ -35,11 +42,6 @@ export function RecentRooms() {
 
         if (response.data) {
           setRecentRooms(response.data);
-        } else if (response.error) {
-          // If 401, user is not logged in
-          if (response.error.code === "UNAUTHORIZED") {
-            setIsLoggedIn(false);
-          }
         }
       } catch (err) {
         console.error("Failed to fetch recent rooms:", err);
@@ -49,28 +51,18 @@ export function RecentRooms() {
     };
 
     fetchRecentRooms();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleRoomClick = (roomCode: string) => {
     router.push(`/room/${roomCode}`);
   };
 
-  // Don't show section if loading, not logged in, or no rooms
-  if (isLoading) {
-    return (
-      <section className="px-4 pb-16">
-        <div className="max-w-4xl mx-auto">
-          <Card className="glass-card animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both" style={{ animationDelay: "600ms" }}>
-            <CardContent className="py-8 flex justify-center">
-              <Loader2 className="h-6 w-6 text-white/50 animate-spin" />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-    );
+  // Don't show section if auth is loading, not authenticated, or no rooms
+  if (authLoading || isLoading) {
+    return null;
   }
 
-  if (!isLoggedIn || recentRooms.length === 0) {
+  if (!isAuthenticated || recentRooms.length === 0) {
     return null;
   }
 
