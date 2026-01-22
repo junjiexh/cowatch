@@ -26,6 +26,13 @@ const (
 	VideoSourceTypeYoutube  VideoSourceType = "youtube"
 )
 
+// AuthResponse defines model for AuthResponse.
+type AuthResponse struct {
+	// Token JWT 认证令牌
+	Token string `json:"token"`
+	User  User   `json:"user"`
+}
+
 // CreateRoomRequest defines model for CreateRoomRequest.
 type CreateRoomRequest struct {
 	MaxUsers *int   `json:"maxUsers,omitempty"`
@@ -41,6 +48,12 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
 // ParseVideoRequest defines model for ParseVideoRequest.
 type ParseVideoRequest struct {
 	// Type 视频源类型，如果不提供会自动识别
@@ -51,17 +64,44 @@ type ParseVideoRequest struct {
 // ParseVideoRequestType 视频源类型，如果不提供会自动识别
 type ParseVideoRequestType string
 
+// RecentRoom defines model for RecentRoom.
+type RecentRoom struct {
+	LastVisited           time.Time `json:"lastVisited"`
+	LastWatchedVideoTitle *string   `json:"lastWatchedVideoTitle,omitempty"`
+	Room                  Room      `json:"room"`
+}
+
+// RegisterRequest defines model for RegisterRequest.
+type RegisterRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
 // Room defines model for Room.
 type Room struct {
+	// Code 8位大写房间码，用于加入房间
+	Code         string       `json:"code"`
 	CreatedAt    *time.Time   `json:"createdAt,omitempty"`
 	CurrentVideo *VideoSource `json:"currentVideo,omitempty"`
-	Id           string       `json:"id"`
-	IsActive     bool         `json:"isActive"`
-	MaxUsers     *int         `json:"maxUsers,omitempty"`
-	Name         string       `json:"name"`
-	OwnerId      string       `json:"ownerId"`
-	OwnerName    *string      `json:"ownerName,omitempty"`
-	UserCount    *int         `json:"userCount,omitempty"`
+
+	// HasPassword 房间是否需要密码
+	HasPassword *bool `json:"hasPassword,omitempty"`
+
+	// Id 房间内部 ID
+	Id        string  `json:"id"`
+	IsActive  bool    `json:"isActive"`
+	MaxUsers  *int    `json:"maxUsers,omitempty"`
+	Name      string  `json:"name"`
+	OwnerId   string  `json:"ownerId"`
+	OwnerName *string `json:"ownerName,omitempty"`
+	UserCount *int    `json:"userCount,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	AvatarUrl *string `json:"avatarUrl,omitempty"`
+	Id        string  `json:"id"`
+	Username  string  `json:"username"`
 }
 
 // VideoSource defines model for VideoSource.
@@ -81,35 +121,67 @@ type VideoSource struct {
 // VideoSourceType defines model for VideoSource.Type.
 type VideoSourceType string
 
-// PostRoomsRoomIdJoinJSONBody defines parameters for PostRoomsRoomIdJoin.
-type PostRoomsRoomIdJoinJSONBody struct {
+// GetRoomsParams defines parameters for GetRooms.
+type GetRoomsParams struct {
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// PostRoomsRoomCodeJoinJSONBody defines parameters for PostRoomsRoomCodeJoin.
+type PostRoomsRoomCodeJoinJSONBody struct {
 	// Password 房间密码（如果需要）
 	Password *string `json:"password,omitempty"`
 }
 
+// GetUsersMeRecentRoomsParams defines parameters for GetUsersMeRecentRooms.
+type GetUsersMeRecentRoomsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
+type PostAuthLoginJSONRequestBody = LoginRequest
+
+// PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
+type PostAuthRegisterJSONRequestBody = RegisterRequest
+
 // PostRoomsJSONRequestBody defines body for PostRooms for application/json ContentType.
 type PostRoomsJSONRequestBody = CreateRoomRequest
 
-// PostRoomsRoomIdJoinJSONRequestBody defines body for PostRoomsRoomIdJoin for application/json ContentType.
-type PostRoomsRoomIdJoinJSONRequestBody PostRoomsRoomIdJoinJSONBody
+// PostRoomsRoomCodeJoinJSONRequestBody defines body for PostRoomsRoomCodeJoin for application/json ContentType.
+type PostRoomsRoomCodeJoinJSONRequestBody PostRoomsRoomCodeJoinJSONBody
 
 // PostVideosParseJSONRequestBody defines body for PostVideosParse for application/json ContentType.
 type PostVideosParseJSONRequestBody = ParseVideoRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// 用户登录
+	// (POST /auth/login)
+	PostAuthLogin(c *gin.Context)
+	// 用户登出
+	// (POST /auth/logout)
+	PostAuthLogout(c *gin.Context)
+	// 获取当前登录用户信息
+	// (GET /auth/me)
+	GetAuthMe(c *gin.Context)
+	// 用户注册
+	// (POST /auth/register)
+	PostAuthRegister(c *gin.Context)
 	// 获取房间列表
 	// (GET /rooms)
-	GetRooms(c *gin.Context)
+	GetRooms(c *gin.Context, params GetRoomsParams)
 	// 创建房间
 	// (POST /rooms)
 	PostRooms(c *gin.Context)
 	// 获取房间详情
-	// (GET /rooms/{roomId})
-	GetRoomsRoomId(c *gin.Context, roomId string)
+	// (GET /rooms/{roomCode})
+	GetRoomsRoomCode(c *gin.Context, roomCode string)
 	// 加入房间
-	// (POST /rooms/{roomId}/join)
-	PostRoomsRoomIdJoin(c *gin.Context, roomId string)
+	// (POST /rooms/{roomCode}/join)
+	PostRoomsRoomCodeJoin(c *gin.Context, roomCode string)
+	// 获取当前用户最近加入的房间
+	// (GET /users/me/recent-rooms)
+	GetUsersMeRecentRooms(c *gin.Context, params GetUsersMeRecentRoomsParams)
 	// 解析视频源
 	// (POST /videos/parse)
 	PostVideosParse(c *gin.Context)
@@ -124,8 +196,8 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(c *gin.Context)
 
-// GetRooms operation middleware
-func (siw *ServerInterfaceWrapper) GetRooms(c *gin.Context) {
+// PostAuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthLogin(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -134,7 +206,80 @@ func (siw *ServerInterfaceWrapper) GetRooms(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetRooms(c)
+	siw.Handler.PostAuthLogin(c)
+}
+
+// PostAuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthLogout(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostAuthLogout(c)
+}
+
+// GetAuthMe operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthMe(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAuthMe(c)
+}
+
+// PostAuthRegister operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthRegister(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostAuthRegister(c)
+}
+
+// GetRooms operation middleware
+func (siw *ServerInterfaceWrapper) GetRooms(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRoomsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetRooms(c, params)
 }
 
 // PostRooms operation middleware
@@ -150,17 +295,17 @@ func (siw *ServerInterfaceWrapper) PostRooms(c *gin.Context) {
 	siw.Handler.PostRooms(c)
 }
 
-// GetRoomsRoomId operation middleware
-func (siw *ServerInterfaceWrapper) GetRoomsRoomId(c *gin.Context) {
+// GetRoomsRoomCode operation middleware
+func (siw *ServerInterfaceWrapper) GetRoomsRoomCode(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "roomId" -------------
-	var roomId string
+	// ------------- Path parameter "roomCode" -------------
+	var roomCode string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "roomId", c.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "roomCode", c.Param("roomCode"), &roomCode, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter roomId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter roomCode: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -171,20 +316,20 @@ func (siw *ServerInterfaceWrapper) GetRoomsRoomId(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetRoomsRoomId(c, roomId)
+	siw.Handler.GetRoomsRoomCode(c, roomCode)
 }
 
-// PostRoomsRoomIdJoin operation middleware
-func (siw *ServerInterfaceWrapper) PostRoomsRoomIdJoin(c *gin.Context) {
+// PostRoomsRoomCodeJoin operation middleware
+func (siw *ServerInterfaceWrapper) PostRoomsRoomCodeJoin(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "roomId" -------------
-	var roomId string
+	// ------------- Path parameter "roomCode" -------------
+	var roomCode string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "roomId", c.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "roomCode", c.Param("roomCode"), &roomCode, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter roomId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter roomCode: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -195,7 +340,33 @@ func (siw *ServerInterfaceWrapper) PostRoomsRoomIdJoin(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PostRoomsRoomIdJoin(c, roomId)
+	siw.Handler.PostRoomsRoomCodeJoin(c, roomCode)
+}
+
+// GetUsersMeRecentRooms operation middleware
+func (siw *ServerInterfaceWrapper) GetUsersMeRecentRooms(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetUsersMeRecentRoomsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetUsersMeRecentRooms(c, params)
 }
 
 // PostVideosParse operation middleware
@@ -238,9 +409,14 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.POST(options.BaseURL+"/auth/login", wrapper.PostAuthLogin)
+	router.POST(options.BaseURL+"/auth/logout", wrapper.PostAuthLogout)
+	router.GET(options.BaseURL+"/auth/me", wrapper.GetAuthMe)
+	router.POST(options.BaseURL+"/auth/register", wrapper.PostAuthRegister)
 	router.GET(options.BaseURL+"/rooms", wrapper.GetRooms)
 	router.POST(options.BaseURL+"/rooms", wrapper.PostRooms)
-	router.GET(options.BaseURL+"/rooms/:roomId", wrapper.GetRoomsRoomId)
-	router.POST(options.BaseURL+"/rooms/:roomId/join", wrapper.PostRoomsRoomIdJoin)
+	router.GET(options.BaseURL+"/rooms/:roomCode", wrapper.GetRoomsRoomCode)
+	router.POST(options.BaseURL+"/rooms/:roomCode/join", wrapper.PostRoomsRoomCodeJoin)
+	router.GET(options.BaseURL+"/users/me/recent-rooms", wrapper.GetUsersMeRecentRooms)
 	router.POST(options.BaseURL+"/videos/parse", wrapper.PostVideosParse)
 }
