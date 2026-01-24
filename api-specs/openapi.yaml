@@ -371,6 +371,15 @@ components:
           format: date-time
         currentVideo:
           $ref: '#/components/schemas/VideoSource'
+        currentUserRole:
+          type: string
+          enum: [host, member, guest]
+          description: 当前用户在此房间的角色
+          example: "host"
+        currentUserHasControl:
+          type: boolean
+          description: 当前用户是否有播放控制权限
+          example: true
       required:
         - id
         - code

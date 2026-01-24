@@ -72,7 +72,47 @@ WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
 
 ## 服务端推送事件
 
-### 1. 用户加入/离开
+### 1. 房间初始化
+
+连接建立后立即推送，包含房间的完整初始状态。
+
+```typescript
+{
+  "type": "room:init",
+  "payload": {
+    "participants": [
+      {
+        "id": "user-123",
+        "username": "张三",
+        "avatarUrl": "https://...",
+        "isOnline": true,
+        "role": "host",
+        "hasControlPermission": true
+      }
+    ],
+    "recentMessages": [
+      {
+        "id": "msg-1",
+        "user": {
+          "id": "user-123",
+          "username": "张三"
+        },
+        "content": "欢迎！",
+        "timestamp": 1234567890
+      }
+    ],
+    "videoState": {
+      "currentTime": 123.45,
+      "isPlaying": true,
+      "playbackRate": 1.0,
+      "volume": 1.0
+    }
+  },
+  "timestamp": 1234567890
+}
+```
+
+### 2. 用户加入/离开
 
 ```typescript
 // 用户加入
@@ -101,7 +141,22 @@ WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
 }
 ```
 
-### 2. 视频状态同步
+### 3. 用户状态变更
+
+用户在线/离线状态变化时推送。
+
+```typescript
+{
+  "type": "user:status",
+  "payload": {
+    "userId": "user-123",
+    "isOnline": true
+  },
+  "timestamp": 1234567890
+}
+```
+
+### 4. 视频状态同步
 
 ```typescript
 // 广播视频状态（房主/授权用户操作后）
@@ -117,7 +172,7 @@ WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
 }
 ```
 
-### 3. 聊天消息广播
+### 5. 聊天消息广播
 
 ```typescript
 {
@@ -133,7 +188,7 @@ WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
 }
 ```
 
-### 4. 视频源变更
+### 6. 视频源变更
 
 ```typescript
 {
@@ -152,7 +207,23 @@ WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
 }
 ```
 
-### 5. 错误消息
+### 7. 权限变更通知
+
+房主授予或撤销用户控制权限时推送。
+
+```typescript
+{
+  "type": "permission:changed",
+  "payload": {
+    "userId": "user-456",
+    "hasControlPermission": true,
+    "changedBy": "user-123"
+  },
+  "timestamp": 1234567890
+}
+```
+
+### 8. 错误消息
 
 ```typescript
 {
@@ -198,10 +269,13 @@ export type ClientEvent =
 
 // 服务端推送事件类型
 export type ServerEvent =
+  | WSMessage<{ participants: RoomParticipant[]; recentMessages: Message[]; videoState: VideoState }, 'room:init'>
   | WSMessage<{ user: User; userCount: number }, 'user:joined'>
   | WSMessage<{ userId: string; username: string; userCount: number }, 'user:left'>
+  | WSMessage<{ userId: string; isOnline: boolean }, 'user:status'>
   | WSMessage<{ currentTime: number; isPlaying: boolean; playbackRate: number; triggeredBy: string }, 'video:state'>
   | WSMessage<{ user: User; message: string; timestamp: number }, 'chat:message'>
   | WSMessage<{ video: VideoSource; changedBy: string }, 'video:changed'>
+  | WSMessage<{ userId: string; hasControlPermission: boolean; changedBy: string }, 'permission:changed'>
   | WSMessage<{ code: string; message: string }, 'error'>;
 ```
