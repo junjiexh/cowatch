@@ -1,5 +1,10 @@
 # Web Frontend
 
+## RULES
+
+在你实现前端UI时，尽量避免使用硬编码的mock数据，可以直接接入API。如果后端没有实现，请你自己修改api-specs/openapi.yaml，
+这样，我们就能通过mock server来测试而不用依赖后端。
+
 ## UI 设计风格
 
 **主题**: 暗黑赛博朋克 + 玻璃态

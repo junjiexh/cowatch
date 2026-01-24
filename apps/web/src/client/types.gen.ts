@@ -43,6 +43,14 @@ export type Room = {
     maxUsers?: number;
     createdAt?: string;
     currentVideo?: VideoSource;
+    /**
+     * 当前用户在此房间的角色
+     */
+    currentUserRole?: 'host' | 'member' | 'guest';
+    /**
+     * 当前用户是否有播放控制权限
+     */
+    currentUserHasControl?: boolean;
 };
 
 export type CreateRoomRequest = {
