@@ -7,17 +7,25 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
+
+	"github.com/yourusername/cowatch/api-gateway/internal/api"
 )
 
 // Client represents a WebSocket client connection
 type Client struct {
-	ID       string
-	RoomID   string
-	UserID   string
-	Username string
-	Conn     *websocket.Conn
-	Send     chan *WSMessage
-	Hub      *Hub
+	ID                   string
+	RoomID               string
+	RoomCode             string
+	UserID               string
+	Username             string
+	AvatarURL            string
+	IsHost               bool
+	HasControlPermission bool
+	Conn                 *websocket.Conn
+	Send                 chan *WSMessage
+	Hub                  *Hub
+	DB                   *gorm.DB
 }
 
 // Hub maintains active clients and broadcasts messages
@@ -82,9 +90,10 @@ func (h *Hub) registerClient(client *Client) {
 	// Notify other clients that a user joined
 	userCount := len(h.rooms[client.RoomID])
 	joinEvent := NewUserJoinedEvent(
-		User{
-			ID:       client.UserID,
-			Username: client.Username,
+		api.User{
+			Id:        client.UserID,
+			Username:  client.Username,
+			AvatarUrl: &client.AvatarURL,
 		},
 		userCount,
 	)
@@ -148,6 +157,31 @@ func (h *Hub) broadcastToRoom(msg *BroadcastMessage) {
 			}
 		}
 	}
+}
+
+// GetOnlineUserIDs returns all online user IDs in a room
+func (h *Hub) GetOnlineUserIDs(roomID string) []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var userIDs []string
+	if clients, ok := h.rooms[roomID]; ok {
+		for client := range clients {
+			userIDs = append(userIDs, client.UserID)
+		}
+	}
+	return userIDs
+}
+
+// GetClientCount returns the number of clients in a room
+func (h *Hub) GetClientCount(roomID string) int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if clients, ok := h.rooms[roomID]; ok {
+		return len(clients)
+	}
+	return 0
 }
 
 // ReadPump pumps messages from the WebSocket connection to the hub
@@ -273,8 +307,8 @@ func (c *Client) handleChatMessage(msg *WSMessage) {
 	}
 
 	chatEvent := NewChatMessageEvent(
-		User{
-			ID:       c.UserID,
+		api.User{
+			Id:       c.UserID,
 			Username: c.Username,
 		},
 		payload.Message,
@@ -295,10 +329,10 @@ func (c *Client) handleVideoChange(msg *WSMessage) {
 
 	// TODO: Fetch video details from database
 	// For now, create a placeholder video source
-	video := VideoSource{
-		ID:   payload.VideoID,
-		Type: "bilibili",
-		URL:  "https://example.com/video",
+	video := api.VideoSource{
+		Id:   payload.VideoID,
+		Type: api.VideoSourceTypeBilibili,
+		Url:  "https://example.com/video",
 	}
 
 	changeEvent := NewVideoChangedEvent(video, c.UserID)
@@ -328,7 +362,5 @@ func (c *Client) parsePayload(payload interface{}, target interface{}) error {
 }
 
 func (c *Client) hasControlPermission() bool {
-	// TODO: Implement actual permission check
-	// For now, allow all users (should check if user is room owner or has been granted permission)
-	return true
+	return c.IsHost || c.HasControlPermission
 }

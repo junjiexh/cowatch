@@ -45,12 +45,20 @@ export const postAuthLogin = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * 用户登出
  */
-export const postAuthLogout = <ThrowOnError extends boolean = false>(options?: Options<PostAuthLogoutData, ThrowOnError>) => (options?.client ?? client).post<PostAuthLogoutResponses, unknown, ThrowOnError>({ url: '/auth/logout', ...options });
+export const postAuthLogout = <ThrowOnError extends boolean = false>(options?: Options<PostAuthLogoutData, ThrowOnError>) => (options?.client ?? client).post<PostAuthLogoutResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/logout',
+    ...options
+});
 
 /**
  * 获取当前登录用户信息
  */
-export const getAuthMe = <ThrowOnError extends boolean = false>(options?: Options<GetAuthMeData, ThrowOnError>) => (options?.client ?? client).get<GetAuthMeResponses, GetAuthMeErrors, ThrowOnError>({ url: '/auth/me', ...options });
+export const getAuthMe = <ThrowOnError extends boolean = false>(options?: Options<GetAuthMeData, ThrowOnError>) => (options?.client ?? client).get<GetAuthMeResponses, GetAuthMeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/me',
+    ...options
+});
 
 /**
  * 获取房间列表
@@ -61,6 +69,7 @@ export const getRooms = <ThrowOnError extends boolean = false>(options?: Options
  * 创建房间
  */
 export const postRooms = <ThrowOnError extends boolean = false>(options: Options<PostRoomsData, ThrowOnError>) => (options.client ?? client).post<PostRoomsResponses, PostRoomsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/rooms',
     ...options,
     headers: {
@@ -72,12 +81,17 @@ export const postRooms = <ThrowOnError extends boolean = false>(options: Options
 /**
  * 获取房间详情
  */
-export const getRoomsByRoomCode = <ThrowOnError extends boolean = false>(options: Options<GetRoomsByRoomCodeData, ThrowOnError>) => (options.client ?? client).get<GetRoomsByRoomCodeResponses, GetRoomsByRoomCodeErrors, ThrowOnError>({ url: '/rooms/{roomCode}', ...options });
+export const getRoomsByRoomCode = <ThrowOnError extends boolean = false>(options: Options<GetRoomsByRoomCodeData, ThrowOnError>) => (options.client ?? client).get<GetRoomsByRoomCodeResponses, GetRoomsByRoomCodeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/rooms/{roomCode}',
+    ...options
+});
 
 /**
  * 加入房间
  */
 export const postRoomsByRoomCodeJoin = <ThrowOnError extends boolean = false>(options: Options<PostRoomsByRoomCodeJoinData, ThrowOnError>) => (options.client ?? client).post<PostRoomsByRoomCodeJoinResponses, PostRoomsByRoomCodeJoinErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/rooms/{roomCode}/join',
     ...options,
     headers: {
@@ -89,7 +103,11 @@ export const postRoomsByRoomCodeJoin = <ThrowOnError extends boolean = false>(op
 /**
  * 获取当前用户最近加入的房间
  */
-export const getUsersMeRecentRooms = <ThrowOnError extends boolean = false>(options?: Options<GetUsersMeRecentRoomsData, ThrowOnError>) => (options?.client ?? client).get<GetUsersMeRecentRoomsResponses, GetUsersMeRecentRoomsErrors, ThrowOnError>({ url: '/users/me/recent-rooms', ...options });
+export const getUsersMeRecentRooms = <ThrowOnError extends boolean = false>(options?: Options<GetUsersMeRecentRoomsData, ThrowOnError>) => (options?.client ?? client).get<GetUsersMeRecentRoomsResponses, GetUsersMeRecentRoomsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/users/me/recent-rooms',
+    ...options
+});
 
 /**
  * 解析视频源

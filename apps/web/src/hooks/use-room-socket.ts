@@ -31,7 +31,7 @@ export interface VideoState {
 }
 
 interface UseRoomSocketOptions {
-  roomId: string;
+  roomCode: string;
   enabled?: boolean;
   onError?: (error: Error) => void;
 }
@@ -57,7 +57,7 @@ interface UseRoomSocketReturn {
 const MAX_MESSAGES = 100;
 
 export function useRoomSocket(options: UseRoomSocketOptions): UseRoomSocketReturn {
-  const { roomId, enabled = true, onError } = options;
+  const { roomCode, enabled = true, onError } = options;
   const { token } = useAuth();
 
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
@@ -66,9 +66,9 @@ export function useRoomSocket(options: UseRoomSocketOptions): UseRoomSocketRetur
 
   // Build WebSocket URL
   const wsUrl = useMemo(() => {
-    if (!roomId || !enabled) return '';
-    return getWebSocketUrl(roomId);
-  }, [roomId, enabled]);
+    if (!roomCode || !enabled) return '';
+    return getWebSocketUrl(roomCode);
+  }, [roomCode, enabled]);
 
   // Event handlers
   const handleRoomInit = useCallback((payload: any) => {
@@ -242,7 +242,7 @@ export function useRoomSocket(options: UseRoomSocketOptions): UseRoomSocketRetur
   // WebSocket connection
   const { isConnected, isConnecting, error, send, disconnect } = useWebSocket({
     url: wsUrl,
-    token,
+    token: token ?? undefined,
     onMessage: handleMessage,
     reconnect: true,
   });
@@ -272,12 +272,12 @@ export function useRoomSocket(options: UseRoomSocketOptions): UseRoomSocketRetur
     send('video:change', { videoId });
   }, [send]);
 
-  // Don't connect if not enabled or no roomId
+  // Don't connect if not enabled or no roomCode
   useEffect(() => {
-    if (!enabled || !roomId) {
+    if (!enabled || !roomCode) {
       disconnect();
     }
-  }, [enabled, roomId, disconnect]);
+  }, [enabled, roomCode, disconnect]);
 
   return {
     isConnected,

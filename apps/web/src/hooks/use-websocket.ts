@@ -98,6 +98,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   // Connect or reconnect
   const connect = useCallback(() => {
+    // Don't connect if URL is empty
+    if (!url || !wsUrl) {
+      return;
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -166,7 +171,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       setError(err instanceof Error ? err : new Error("Failed to create WebSocket"));
       setIsConnecting(false);
     }
-  }, [wsUrl, onOpen, onClose, onError, onMessage, reconnect, reconnectInterval, maxReconnectAttempts]);
+  }, [url, wsUrl, onOpen, onClose, onError, onMessage, reconnect, reconnectInterval, maxReconnectAttempts]);
 
   // Auto-connect on mount and token change
   useEffect(() => {

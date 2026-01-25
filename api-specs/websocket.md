@@ -3,7 +3,7 @@
 ## 连接
 
 ```
-WebSocket URL: ws://localhost:8080/ws/rooms/{roomId}
+WebSocket URL: ws://localhost:8080/ws/rooms/{roomCode}
 ```
 
 ## 客户端发送事件

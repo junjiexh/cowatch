@@ -12,11 +12,22 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
 // Defines values for ParseVideoRequestType.
 const (
 	ParseVideoRequestTypeBilibili ParseVideoRequestType = "bilibili"
 	ParseVideoRequestTypeQuark    ParseVideoRequestType = "quark"
 	ParseVideoRequestTypeYoutube  ParseVideoRequestType = "youtube"
+)
+
+// Defines values for RoomCurrentUserRole.
+const (
+	Guest  RoomCurrentUserRole = "guest"
+	Host   RoomCurrentUserRole = "host"
+	Member RoomCurrentUserRole = "member"
 )
 
 // Defines values for VideoSourceType.
@@ -80,9 +91,15 @@ type RegisterRequest struct {
 // Room defines model for Room.
 type Room struct {
 	// Code 8位大写房间码，用于加入房间
-	Code         string       `json:"code"`
-	CreatedAt    *time.Time   `json:"createdAt,omitempty"`
-	CurrentVideo *VideoSource `json:"currentVideo,omitempty"`
+	Code      string     `json:"code"`
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+
+	// CurrentUserHasControl 当前用户是否有播放控制权限
+	CurrentUserHasControl *bool `json:"currentUserHasControl,omitempty"`
+
+	// CurrentUserRole 当前用户在此房间的角色
+	CurrentUserRole *RoomCurrentUserRole `json:"currentUserRole,omitempty"`
+	CurrentVideo    *VideoSource         `json:"currentVideo,omitempty"`
 
 	// HasPassword 房间是否需要密码
 	HasPassword *bool `json:"hasPassword,omitempty"`
@@ -96,6 +113,9 @@ type Room struct {
 	OwnerName *string `json:"ownerName,omitempty"`
 	UserCount *int    `json:"userCount,omitempty"`
 }
+
+// RoomCurrentUserRole 当前用户在此房间的角色
+type RoomCurrentUserRole string
 
 // User defines model for User.
 type User struct {
@@ -212,6 +232,8 @@ func (siw *ServerInterfaceWrapper) PostAuthLogin(c *gin.Context) {
 // PostAuthLogout operation middleware
 func (siw *ServerInterfaceWrapper) PostAuthLogout(c *gin.Context) {
 
+	c.Set(BearerAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -224,6 +246,8 @@ func (siw *ServerInterfaceWrapper) PostAuthLogout(c *gin.Context) {
 
 // GetAuthMe operation middleware
 func (siw *ServerInterfaceWrapper) GetAuthMe(c *gin.Context) {
+
+	c.Set(BearerAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -285,6 +309,8 @@ func (siw *ServerInterfaceWrapper) GetRooms(c *gin.Context) {
 // PostRooms operation middleware
 func (siw *ServerInterfaceWrapper) PostRooms(c *gin.Context) {
 
+	c.Set(BearerAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -333,6 +359,8 @@ func (siw *ServerInterfaceWrapper) PostRoomsRoomCodeJoin(c *gin.Context) {
 		return
 	}
 
+	c.Set(BearerAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -347,6 +375,8 @@ func (siw *ServerInterfaceWrapper) PostRoomsRoomCodeJoin(c *gin.Context) {
 func (siw *ServerInterfaceWrapper) GetUsersMeRecentRooms(c *gin.Context) {
 
 	var err error
+
+	c.Set(BearerAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersMeRecentRoomsParams
