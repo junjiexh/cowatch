@@ -13,6 +13,7 @@ type RoomMember struct {
 	Room                  *Room     `gorm:"foreignKey:RoomID;constraint:OnDelete:CASCADE" json:"room,omitempty"`
 	UserID                string    `gorm:"type:uuid;not null;uniqueIndex:idx_room_user" json:"userId"`
 	User                  *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	HasControlPermission  bool      `gorm:"default:false" json:"hasControlPermission"`
 	LastVisitedAt         time.Time `gorm:"index" json:"lastVisitedAt"`
 	LastWatchedVideoTitle *string   `gorm:"size:255" json:"lastWatchedVideoTitle,omitempty"`
 	CreatedAt             time.Time `json:"createdAt"`

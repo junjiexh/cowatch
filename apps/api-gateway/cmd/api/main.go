@@ -11,6 +11,7 @@ import (
 	"github.com/yourusername/cowatch/api-gateway/internal/database"
 	"github.com/yourusername/cowatch/api-gateway/internal/handlers"
 	"github.com/yourusername/cowatch/api-gateway/internal/middleware"
+	"github.com/yourusername/cowatch/api-gateway/internal/websocket"
 )
 
 func main() {
@@ -25,6 +26,13 @@ func main() {
 
 	// Create server
 	server := handlers.NewServer(db, cfg.JWTSecret)
+
+	// Create and start WebSocket hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
+	// Create WebSocket HTTP handler
+	wsHandler := websocket.NewHTTPHandler(wsHub, db, cfg.JWTSecret)
 
 	// Create router
 	router := gin.Default()
@@ -73,12 +81,6 @@ func main() {
 					}
 				}
 
-				// Room detail routes (GET /rooms/{code}) are public
-				if method == "GET" && len(path) > len("/api/v1/rooms/") && path[:len("/api/v1/rooms/")] == "/api/v1/rooms/" {
-					c.Next()
-					return
-				}
-
 				// Apply auth middleware for protected routes
 				for _, route := range authRequired {
 					fullPath := "/api/v1" + route
@@ -93,6 +95,10 @@ func main() {
 			},
 		},
 	})
+
+	// WebSocket endpoint for room connections
+	// URL: ws://localhost:8080/ws/rooms/{roomCode}?token=xxx
+	router.GET("/ws/rooms/:roomCode", wsHandler.HandleWebSocket)
 
 	// Start server
 	log.Printf("Starting server on port %s", cfg.Port)

@@ -40,7 +40,7 @@ func (s *Server) GetUsersMeRecentRooms(c *gin.Context, params api.GetUsersMeRece
 			continue
 		}
 		result = append(result, api.RecentRoom{
-			Room:                  roomToAPI(member.Room),
+			Room:                  roomToAPI(member.Room, user, s.db),
 			LastVisited:           member.LastVisitedAt,
 			LastWatchedVideoTitle: member.LastWatchedVideoTitle,
 		})

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/yourusername/cowatch/api-gateway/internal/api"
 	"github.com/yourusername/cowatch/api-gateway/internal/middleware"
@@ -35,9 +36,12 @@ func (s *Server) GetRooms(c *gin.Context, params api.GetRoomsParams) {
 		return
 	}
 
+	// Get current user if authenticated
+	user, _ := middleware.GetUser(c)
+
 	result := make([]api.Room, len(rooms))
 	for i, room := range rooms {
-		result[i] = roomToAPI(&room)
+		result[i] = roomToAPI(&room, user, s.db)
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -97,7 +101,7 @@ func (s *Server) PostRooms(c *gin.Context) {
 	}
 	s.db.Create(&member)
 
-	c.JSON(http.StatusCreated, roomToAPI(&room))
+	c.JSON(http.StatusCreated, roomToAPI(&room, user, s.db))
 }
 
 // GetRoomsRoomCode returns room details by code
@@ -109,7 +113,10 @@ func (s *Server) GetRoomsRoomCode(c *gin.Context, roomCode string) {
 		return
 	}
 
-	c.JSON(http.StatusOK, roomToAPI(&room))
+	// Get current user if authenticated
+	user, _ := middleware.GetUser(c)
+
+	c.JSON(http.StatusOK, roomToAPI(&room, user, s.db))
 }
 
 // PostRoomsRoomCodeJoin allows a user to join a room
@@ -163,11 +170,11 @@ func (s *Server) PostRoomsRoomCodeJoin(c *gin.Context, roomCode string) {
 		s.db.Model(&member).Update("last_visited_at", time.Now())
 	}
 
-	c.JSON(http.StatusOK, roomToAPI(&room))
+	c.JSON(http.StatusOK, roomToAPI(&room, user, s.db))
 }
 
 // roomToAPI converts a models.Room to api.Room
-func roomToAPI(room *models.Room) api.Room {
+func roomToAPI(room *models.Room, currentUser *models.User, db *gorm.DB) api.Room {
 	hasPassword := room.HasPassword()
 	userCount := 0 // TODO: Get actual online user count from WebSocket hub
 
@@ -185,6 +192,39 @@ func roomToAPI(room *models.Room) api.Room {
 
 	if room.Owner != nil {
 		result.OwnerName = &room.Owner.Username
+	}
+
+	// Set current user role and permissions
+	if currentUser != nil {
+		if currentUser.ID == room.OwnerID {
+			// User is the room owner
+			role := api.Host
+			hasControl := true
+			result.CurrentUserRole = &role
+			result.CurrentUserHasControl = &hasControl
+		} else {
+			// User is a member, check for control permission
+			var member models.RoomMember
+			err := db.Where("room_id = ? AND user_id = ?", room.ID, currentUser.ID).First(&member).Error
+			if err == nil {
+				// User is a member
+				role := api.Member
+				result.CurrentUserRole = &role
+				result.CurrentUserHasControl = &member.HasControlPermission
+			} else {
+				// User is a guest (not a member)
+				role := api.Guest
+				hasControl := false
+				result.CurrentUserRole = &role
+				result.CurrentUserHasControl = &hasControl
+			}
+		}
+	} else {
+		// No current user (not authenticated)
+		role := api.Guest
+		hasControl := false
+		result.CurrentUserRole = &role
+		result.CurrentUserHasControl = &hasControl
 	}
 
 	return result

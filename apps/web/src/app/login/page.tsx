@@ -36,6 +36,7 @@ export default function LoginPage() {
     const result = await login(username, password);
 
     if (result.success) {
+      // TODO: seems redundant with useEffect above
       router.push("/");
     } else {
       setError(result.error || "登录失败，请重试");

@@ -34,7 +34,7 @@ export default function RoomPage() {
     isConnected,
     isConnecting,
   } = useRoomSocket({
-    roomId: room?.id || '',
+    roomCode: roomCode,
     enabled: !!room && isAuthenticated,
   });
 
@@ -216,7 +216,7 @@ export default function RoomPage() {
                 isInCall={isInCall}
                 participantCount={participants.filter(p => p.isOnline).length}
                 isHost={isHost}
-                hasControlPermission={hasControlPermission}
+                hasPermission={hasControlPermission}
                 onJoinCall={handleJoinCall}
                 onLeaveCall={handleLeaveCall}
                 onAddVideo={handleAddVideo}
