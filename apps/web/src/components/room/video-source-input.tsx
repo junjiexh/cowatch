@@ -52,7 +52,7 @@ export function VideoSourceInput({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
         <div className="relative flex-1">
           <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
           <input
@@ -65,7 +65,7 @@ export function VideoSourceInput({
             placeholder="粘贴视频链接 (Bilibili/YouTube/夸克)"
             disabled={isProcessing}
             className={cn(
-              "w-full pl-10 pr-4 py-2.5 glass rounded-lg",
+              "w-full h-9 pl-10 pr-4 glass rounded-lg",
               "border border-white/10 text-white/90 placeholder:text-white/30",
               "focus:neon-border focus:outline-none transition-all duration-300",
               "disabled:opacity-50 disabled:cursor-not-allowed"
