@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { Play, AlertCircle, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +12,10 @@ interface VideoPlayerProps {
   poster?: string;
   state?: VideoState;
   errorMessage?: string;
+  seekToTime?: number; // 当这个值变化时，视频会 seek 到指定时间
   onPlay?: () => void;
+  onTimeUpdate?: (currentTime: number) => void;
+  onDurationChange?: (duration: number) => void;
   className?: string;
 }
 
@@ -21,9 +25,38 @@ export function VideoPlayer({
   poster,
   state = "idle",
   errorMessage,
+  seekToTime,
   onPlay,
+  onTimeUpdate,
+  onDurationChange,
   className,
 }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // 根据 state 变化控制视频播放/暂停
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+
+    if (state === "playing") {
+      video.play().catch((err) => {
+        console.error("[VideoPlayer] Play failed:", err);
+      });
+    } else if (state === "paused") {
+      video.pause();
+    }
+  }, [state, videoUrl]);
+
+  // 处理 seek 操作
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl || seekToTime === undefined) return;
+
+    // 只有当差异超过 0.5 秒时才 seek，避免频繁更新
+    if (Math.abs(video.currentTime - seekToTime) > 0.5) {
+      video.currentTime = seekToTime;
+    }
+  }, [seekToTime, videoUrl]);
   const renderContent = () => {
     switch (state) {
       case "loading":
@@ -94,11 +127,19 @@ export function VideoPlayer({
           <div className="absolute inset-0 flex items-center justify-center bg-[oklch(0.05_0_0)]">
             {videoUrl ? (
               <video
+                ref={videoRef}
                 className="w-full h-full"
                 src={videoUrl}
                 poster={poster}
-                autoPlay={state === "playing"}
                 controls={false}
+                onTimeUpdate={(e) => {
+                  const video = e.currentTarget;
+                  onTimeUpdate?.(video.currentTime);
+                }}
+                onDurationChange={(e) => {
+                  const video = e.currentTarget;
+                  onDurationChange?.(video.duration);
+                }}
               />
             ) : (
               <div className="flex flex-col items-center text-white/20">

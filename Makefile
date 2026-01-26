@@ -28,6 +28,9 @@ test-api-coverage:
 build-api:
 	cd apps/api-gateway && go build -o bin/api-gateway cmd/api/main.go
 
+dev:
+	make -j2 dev-web dev-api
+
 # Database
 db-up:
 	docker-compose -f docker/docker-compose.yml up -d

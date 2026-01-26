@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { BackgroundEffects } from "@/components/lobby/background-effects";
 import { Navbar } from "@/components/layout/navbar";
@@ -8,10 +8,14 @@ import { RoomHeader } from "@/components/room/room-header";
 import { VideoPlayer } from "@/components/room/video-player";
 import { VideoControls } from "@/components/room/video-controls";
 import { ChatSidebar } from "@/components/room/chat-sidebar";
+import { TorrentSeeder } from "@/components/room/torrent-seeder";
+import { TorrentStatus } from "@/components/room/torrent-status";
 import { useAuth } from "@/stores/auth-store";
 import { useRoomSocket } from "@/hooks/use-room-socket";
+import { useWebTorrent } from "@/hooks/use-webtorrent";
 import { getRoomsByRoomCode, postVideosParse } from "@/client";
 import type { Room } from "@/client/types.gen";
+import type { SeedResult } from "@/lib/webtorrent";
 
 export default function RoomPage() {
   const params = useParams();
@@ -43,6 +47,16 @@ export default function RoomPage() {
   const [callParticipantCount] = useState(2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAddingVideo, setIsAddingVideo] = useState(false);
+
+  // WebTorrent state
+  const torrentHook = useWebTorrent();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
+  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
+  const [localIsPlaying, setLocalIsPlaying] = useState(false);
+  const [localCurrentTime, setLocalCurrentTime] = useState(0);
+  const [localDuration, setLocalDuration] = useState(0);
+  const [localSeekTime, setLocalSeekTime] = useState<number | undefined>(undefined);
 
   // Derived state from REST API
   const isHost = room?.currentUserRole === 'host';
@@ -83,13 +97,31 @@ export default function RoomPage() {
   };
 
   const handlePlayPause = () => {
-    if (!hasControlPermission || !wsVideoState) return;
+    // 如果是本地视频
+    if (localVideoUrl) {
+      // 标记为已开始播放
+      if (!hasStartedPlaying) {
+        setHasStartedPlaying(true);
+      }
+      // 切换本地播放状态
+      setLocalIsPlaying((prev) => !prev);
+    }
 
-    const action = wsVideoState.isPlaying ? 'pause' : 'play';
-    sendVideoControl(action);
+    // 如果有控制权限且 WebSocket 已连接，同时通过 WebSocket 同步状态
+    if (hasControlPermission && wsVideoState) {
+      const action = wsVideoState.isPlaying ? 'pause' : 'play';
+      sendVideoControl(action);
+    }
   };
 
   const handleSkipBack = () => {
+    if (localVideoUrl) {
+      // 本地视频控制
+      const newTime = Math.max(0, localCurrentTime - 10);
+      setLocalSeekTime(newTime);
+      return;
+    }
+
     if (!hasControlPermission || !wsVideoState) return;
 
     const newTime = Math.max(0, wsVideoState.currentTime - 10);
@@ -97,6 +129,13 @@ export default function RoomPage() {
   };
 
   const handleSkipForward = () => {
+    if (localVideoUrl) {
+      // 本地视频控制
+      const newTime = Math.min(localDuration, localCurrentTime + 10);
+      setLocalSeekTime(newTime);
+      return;
+    }
+
     if (!hasControlPermission || !wsVideoState || !room?.currentVideo?.duration) return;
 
     const newTime = Math.min(room.currentVideo.duration, wsVideoState.currentTime + 10);
@@ -104,6 +143,12 @@ export default function RoomPage() {
   };
 
   const handleSeek = (time: number) => {
+    if (localVideoUrl) {
+      // 本地视频控制
+      setLocalSeekTime(time);
+      return;
+    }
+
     if (!hasControlPermission) return;
 
     sendVideoControl('seek', { currentTime: time });
@@ -160,6 +205,35 @@ export default function RoomPage() {
     const shareUrl = `${window.location.origin}/room/${roomCode}`;
     navigator.clipboard.writeText(shareUrl);
     alert("房间链接已复制到剪贴板！");
+  };
+
+  // WebTorrent handlers
+  const handleTorrentReady = (result: SeedResult) => {
+    console.log("[Room] Torrent ready:", result);
+    // TODO: Send magnet URI via WebSocket to all participants
+    // sendMessage({
+    //   type: 'torrent:seed',
+    //   payload: {
+    //     magnetURI: result.magnetURI,
+    //     fileName: result.fileName,
+    //     fileSize: result.fileSize,
+    //   }
+    // });
+  };
+
+  const handleVideoReady = (videoUrl: string) => {
+    console.log("[Room] Local video ready:", videoUrl);
+    setLocalVideoUrl(videoUrl);
+    setHasStartedPlaying(false); // 重置播放状态，显示播放按钮
+    setLocalIsPlaying(false); // 重置本地播放状态
+    setLocalCurrentTime(0); // 重置当前时间
+    setLocalDuration(0); // 重置时长
+    setLocalSeekTime(undefined); // 重置 seek 状态
+  };
+
+  const handleTorrentError = (error: Error) => {
+    console.error("[Room] Torrent error:", error);
+    alert(`做种失败: ${error.message}`);
   };
 
   // Loading states
@@ -225,20 +299,50 @@ export default function RoomPage() {
                 onSettings={() => console.log("Settings")}
               />
 
+              {/* WebTorrent Seeder (房主专用) */}
+              {isHost && (
+                <TorrentSeeder
+                  onTorrentReady={handleTorrentReady}
+                  onVideoReady={handleVideoReady}
+                  onError={handleTorrentError}
+                />
+              )}
+
+              {/* P2P 状态指示器 */}
+              {(torrentHook.state.status === "seeding" ||
+                torrentHook.state.status === "downloading" ||
+                torrentHook.state.status === "ready") && (
+                <TorrentStatus state={torrentHook.state} />
+              )}
+
               {/* Video Player */}
               <VideoPlayer
-                state={wsVideoState?.isPlaying ? "playing" : "paused"}
+                videoUrl={localVideoUrl || undefined}
+                state={
+                  localVideoUrl
+                    ? !hasStartedPlaying
+                      ? "idle"
+                      : localIsPlaying
+                      ? "playing"
+                      : "paused"
+                    : wsVideoState?.isPlaying
+                    ? "playing"
+                    : "paused"
+                }
+                seekToTime={localVideoUrl ? localSeekTime : undefined}
                 onPlay={handlePlayPause}
+                onTimeUpdate={(time) => setLocalCurrentTime(time)}
+                onDurationChange={(duration) => setLocalDuration(duration)}
               />
 
               {/* Video Controls */}
               <VideoControls
-                isPlaying={wsVideoState?.isPlaying || false}
-                currentTime={wsVideoState?.currentTime || 0}
-                duration={room.currentVideo?.duration || 0}
+                isPlaying={localVideoUrl ? localIsPlaying : (wsVideoState?.isPlaying || false)}
+                currentTime={localVideoUrl ? localCurrentTime : (wsVideoState?.currentTime || 0)}
+                duration={localVideoUrl ? localDuration : (room.currentVideo?.duration || 0)}
                 volume={(wsVideoState?.volume || 1) * 100}
                 isMuted={(wsVideoState?.volume || 0) === 0}
-                canControl={hasControlPermission}
+                canControl={localVideoUrl ? true : hasControlPermission}
                 onPlayPause={handlePlayPause}
                 onSkipBack={handleSkipBack}
                 onSkipForward={handleSkipForward}

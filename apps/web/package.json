@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "generate": "openapi-ts",
     "mock": "prism mock ../../api-specs/openapi.yaml -p 4040 --dynamic",
-    "dev-mock": "BACKEND_URL=http://localhost:4040 next dev"
+    "dev-mock": "BACKEND_URL=http://localhost:4040 next dev --webpack"
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.13.1",
@@ -22,7 +22,8 @@
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "webtorrent": "^2.8.5"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.90.4",
@@ -31,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/webtorrent": "^0.110.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
